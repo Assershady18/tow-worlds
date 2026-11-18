@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+
+<html lang="ar">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+
+<title>TWO WORLDS | WORLD CITY</title>
+
+<style>
+
+*{box-sizing:border-box}
+
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#87b9ce;font-family:Arial,sans-serif;touch-action:none}
+
+canvas{display:block}
+
+#hud{position:fixed;top:12px;left:12px;right:12px;z-index:5;pointer-events:none}
+
+#logo{font-size:21px;font-weight:900;letter-spacing:2px;text-shadow:0 2px 5px #111}
+
+#subtitle{font-size:10px;letter-spacing:3px;margin-top:3px}
+
+#mission{margin-top:12px;background:#101b29dd;border:1px solid #ffffff44;border-radius:12px;padding:11px 14px;width:max-content;max-width:75%;font-size:13px;line-height:1.6}
+
+#money{position:fixed;right:12px;top:12px;background:#101b29dd;border:1px solid #ffffff44;border-radius:12px;padding:12px;font-weight:bold;z-index:6}
+
+#joystick{position:fixed;bottom:25px;left:22px;width:132px;height:132px;border-radius:50%;background:#ffffff35;border:3px solid #ffffffaa;z-index:10;touch-action:none}
+
+#knob{position:absolute;left:35px;top:35px;width:56px;height:56px;border-radius:50%;background:#ffffffd9;border:3px solid #ffffff;box-shadow:0 3px 12px #0005;pointer-events:none}
+
+#run{position:fixed;bottom:45px;right:25px;width:75px;height:75px;border-radius:50%;border:2px solid #ffffffaa;background:#172d49cc;color:white;font-size:14px;font-weight:bold;z-index:10;touch-action:none}
+
+#hint{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);font-size:10px;color:white;text-shadow:0 1px 4px #000;white-space:nowrap;pointer-events:none}
+
+#toast{position:fixed;top:40%;left:50%;transform:translate(-50%,-50%);background:#102333ee;padding:18px 24px;border-radius:15px;text-align:center;display:none;z-index:20;font-weight:bold;line-height:1.7}
+
+#loading{position:fixed;inset:0;background:#142333;display:flex;align-items:center;justify-content:center;z-index:30;text-align:center;line-height:2}
+
+</style>
+
+</head>
+
+<body>
+
+<div id="loading">TWO WORLDS<br>جاري تجهيز WORLD CITY...</div>
+
+<div id="hud">
+
+ <div id="logo">TWO WORLDS</div>
+
+ <div id="subtitle">WELCOME TO WORLD CITY</div>
+
+ <div id="mission">🎯 المهمة الأولى: اذهب إلى العلامة الذهبية</div>
+
+</div>
+
+<div id="money">💵 $<span id="cash">1000</span></div>
+
+<div id="joystick"><div id="knob"></div></div>
+
+<button id="run">🏃 ركض</button>
+
+<div id="hint">اسحب العصا للحركة واسحب يمين الشاشة لتحريك الكاميرا</div>
+
+<div id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+
+<script>
+
+(() => {
+
+const loading=document.getElementById("loading");
+
+if(!window.THREE){
+
+ loading.innerHTML="تعذر تحميل محرك 3D<br>تأكد من اتصال الإنترنت وأعد تحميل الصفحة";
+
+ return;
+
+}
+
+const scene=new THREE.Scene();
+
+scene.background=new THREE.Color(0x91c7dc);
+
+scene.fog=new THREE.Fog(0x91c7dc,55,180);
+
+const camera=new THREE.PerspectiveCamera(65,innerWidth/innerHeight,.1,300);
+
+const renderer=new THREE.WebGLRenderer({antialias:true});
+
+renderer.setSize(innerWidth,innerHeight);
+
+renderer.setPixelRatio(Math.min(devicePixelRatio,1.7));
+
+renderer.shadowMap.enabled=true;
+
+renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+
+renderer.outputColorSpace=THREE.SRGBColorSpace;
+
+renderer.toneMapping=THREE.ACESFilmicToneMapping;
+
+renderer.toneMappingExposure=1.15;
+
+document.body.appendChild(renderer.domElement);
+
+const hemi=new THREE.HemisphereLight(0xffffff,0x647c58,2.1);
+
+scene.add(hemi);
+
+const sun=new THREE.DirectionalLight(0xfff0d6,2.5);
+
+sun.position.set(-35,65,30);
+
+sun.castShadow=true;
+
+sun.shadow.mapSize.set(1024,1024);
+
+scene.add(sun);
+
+function mat(color,roughness=1){
+
+ return new THREE.MeshStandardMaterial({color,roughness});
+
+}
+
+const grass=mat(0x668e57);
+
+const road=mat(0x343a40);
+
+const sidewalk=mat(0xc3c0ae);
+
+const white=mat(0xffffff);
+
+const yellow=mat(0xe8bd42);
+
+const dark=mat(0x263747);
+
+function box(w,h,d,material,x,y,z,parent=scene){
+
+ const mesh=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),material);
+
+ mesh.position.set(x,y,z);
+
+ mesh.castShadow=true;
+
+ mesh.receiveShadow=true;
+
+ parent.add(mesh);
+
+ return mesh;
+
+}
+
+// الأرض
+
+box(240,.5,240,grass,0,-.4,0);
+
+// الطرق
+
+box(13,.08,220,road,0,-.1,0);
+
+box(220,.08,13,road,0,-.1,0);
+
+box(7,.1,220,sidewalk,10,-.06,0);
+
+box(7,.1,220,sidewalk,-10,-.06,0);
+
+box(220,.1,7,sidewalk,0,-.06,10);
+
+box(220,.1,7,sidewalk,0,-.06,-10);
+
+// خطوط الطرق
+
+for(let i=-100;i<110;i+=12){
+
+ box(.22,.035,5,yellow,0,-.045,i);
+
+ box(5,.035,.22,yellow,i,-.045,0);
+
+}
+
+// مباني المدينة
+
+const buildingColors=[0xd4b99b,0x9daeb9,0xc8c5b8,0xb4a38e,0x829ba9,0xd1c9bb];
+
+function building(x,z,w,d,h,color){
+
+ const m=mat(color);
+
+ box(w,h,d,m,x,h/2-.12,z);
+
+ const roof=mat(0x465563);
+
+ box(w+.3,.35,d+.3,roof,x,h-.1,z);
+
+ for(let yy=2;yy<h-1;yy+=3){
+
+  for(let xx=-w/2+1;xx<w/2-0.5;xx+=2.2){
+
+   const win=mat(0x8dd0df);
+
+   box(.85,1.25,.08,win,x+xx,yy,z-d/2-.05);
+
+   box(.85,1.25,.08,win,x+xx,yy,z+d/2+.05);
+
+  }
+
+ }
+
+}
+
+for(let x=-65;x<=65;x+=24){
+
+ for(let z=-65;z<=65;z+=24){
+
+  if(Math.abs(x)<14||Math.abs(z)<14)continue;
+
+  const h=8+Math.random()*19;
+
+  const c=buildingColors[Math.floor(Math.random()*buildingColors.length)];
+
+  building(x+(Math.random()-.5)*5,z+(Math.random()-.5)*5,11+Math.random()*4,11+Math.random()*4,h,c);
+
+ }
+
+}
+
+// أشجار
+
+const trunk=mat(0x68452e);
+
+const leaves=[mat(0x286b43),mat(0x377d4c),mat(0x4b8750)];
+
+function tree(x,z){
+
+ const t=new THREE.Mesh(new THREE.CylinderGeometry(.35,.5,3,8),trunk);
+
+ t.position.set(x,1.4,z);t.castShadow=true;scene.add(t);
+
+ const crown=new THREE.Mesh(new THREE.SphereGeometry(2.1,9,8),leaves[Math.floor(Math.random()*3)]);
+
+ crown.position.set(x,4,z);crown.castShadow=true;scene.add(crown);
+
+}
+
+for(let i=-90;i<=90;i+=12){
+
+ tree(i,14);tree(i,-14);tree(14,i);tree(-14,i);
+
+}
+
+// سيارات متوقفة
+
+function car(x,z,color){
+
+ const group=new THREE.Group();
+
+ const body=mat(color);
+
+ const glass=mat(0x9fcbd8);
+
+ box(3.5,1.1,6,body,0,.9,0,group);
+
+ box(2.6,1.05,2.9,glass,0,1.8,-.25,group);
+
+ const tire=mat(0x16191c);
+
+ for(const a of [-1.5,1.5]){
+
+  for(const b of [-1.8,1.8]){
+
+   const w=new THREE.Mesh(new THREE.CylinderGeometry(.55,.55,.35,12),tire);
+
+   w.rotation.z=Math.PI/2;w.position.set(a,.55,b);group.add(w);
+
+  }
+
+ }
+
+ group.position.set(x,0,z);
+
+ scene.add(group);
+
+}
+
+car(5,-22,0xc44735);
+
+car(-5,25,0x336ca1);
+
+car(30,5,0xd8d3c4);
+
+car(-32,-5,0x222a33);
+
+// الشخصية
+
+const player=new THREE.Group();
+
+const skin=mat(0xd5a17c);
+
+const shirt=mat(0x2254a1);
+
+const pants=mat(0x252d3b);
+
+const shoes=mat(0x17191e);
+
+const body=new THREE.Mesh(new THREE.CylinderGeometry(.43,.52,1.25,12),shirt);
+
+body.position.y=1.55;body.castShadow=true;player.add(body);
+
+const head=new THREE.Mesh(new THREE.SphereGeometry(.39,16,12),skin);
+
+head.position.y=2.45;head.castShadow=true;player.add(head);
+
+const legL=box(.28,.85,.34,pants,-.24,.55,0,player);
+
+const legR=box(.28,.85,.34,pants,.24,.55,0,player);
+
+const footL=box(.32,.2,.52,shoes,-.24,.13,.08,player);
+
+const footR=box(.32,.2,.52,shoes,.24,.13,.08,player);
+
+const armL=box(.25,.95,.28,skin,-.58,1.55,0,player);
+
+const armR=box(.25,.95,.28,skin,.58,1.55,0,player);
+
+player.position.set(0,0,0);
+
+scene.add(player);
+
+// علامة المهمة
+
+const marker=new THREE.Group();
+
+const ring=new THREE.Mesh(new THREE.TorusGeometry(2.1,.22,12,40),yellow);
+
+ring.rotation.x=Math.PI/2;
+
+ring.position.y=.15;
+
+marker.add(ring);
+
+const beam=new THREE.Mesh(new THREE.CylinderGeometry(.15,.15,5,12),
+
+ new THREE.MeshBasicMaterial({color:0xffd13d,transparent:true,opacity:.4}));
+
+beam.position.y=2.5;
+
+marker.add(beam);
+
+marker.position.set(35,0,-42);
+
+scene.add(marker);
+
+// التحكم
+
+let joyX=0,joyY=0,running=false;
+
+let cameraAngle=0;
+
+let cameraDrag=false,lastX=0;
+
+let completed=false;
+
+let cash=1000;
+
+const joy=document.getElementById("joystick");
+
+const knob=document.getElementById("knob");
+
+let joyPointer=null;
+
+function setJoy(e){
+
+ const r=joy.getBoundingClientRect();
+
+ let dx=e.clientX-(r.left+r.width/2);
+
+ let dy=e.clientY-(r.top+r.height/2);
+
+ const max=43;
+
+ const len=Math.hypot(dx,dy);
+
+ if(len>max){dx=dx/len*max;dy=dy/len*max}
+
+ joyX=dx/max;
+
+ joyY=dy/max;
+
+ knob.style.transform=`translate(${dx}px,${dy}px)`;
+
+}
+
+joy.addEventListener("pointerdown",e=>{
+
+ joyPointer=e.pointerId;
+
+ joy.setPointerCapture(e.pointerId);
+
+ setJoy(e);
+
+});
+
+joy.addEventListener("pointermove",e=>{
+
+ if(e.pointerId===joyPointer)setJoy(e);
+
+});
+
+function resetJoy(){
+
+ joyPointer=null;joyX=0;joyY=0;
+
+ knob.style.transform="translate(0px,0px)";
+
+}
+
+joy.addEventListener("pointerup",resetJoy);
+
+joy.addEventListener("pointercancel",resetJoy);
+
+const runBtn=document.getElementById("run");
+
+runBtn.addEventListener("pointerdown",e=>{e.preventDefault();running=true});
+
+runBtn.addEventListener("pointerup",()=>running=false);
+
+runBtn.addEventListener("pointercancel",()=>running=false);
+
+runBtn.addEventListener("pointerleave",()=>running=false);
+
+// سحب يمين الشاشة لتدوير الكاميرا
+
+renderer.domElement.addEventListener("pointerdown",e=>{
+
+ if(e.clientX>innerWidth*.45){
+
+  cameraDrag=true;lastX=e.clientX;
+
+ }
+
+});
+
+renderer.domElement.addEventListener("pointermove",e=>{
+
+ if(cameraDrag){
+
+  cameraAngle-=(e.clientX-lastX)*.008;
+
+  lastX=e.clientX;
+
+ }
+
+});
+
+renderer.domElement.addEventListener("pointerup",()=>cameraDrag=false);
+
+renderer.domElement.addEventListener("pointercancel",()=>cameraDrag=false);
+
+// لوحة المفاتيح للحاسوب
+
+const keys={};
+
+addEventListener("keydown",e=>keys[e.key.toLowerCase()]=true);
+
+addEventListener("keyup",e=>keys[e.key.toLowerCase()]=false);
+
+const clock=new THREE.Clock();
+
+let walkTime=0;
+
+function animate(){
+
+ requestAnimationFrame(animate);
+
+ const dt=Math.min(clock.getDelta(),.04);
+
+ let forward=-joyY;
+
+ let sideways=joyX;
+
+ if(keys["w"]||keys["arrowup"])forward=1;
+
+ if(keys["s"]||keys["arrowdown"])forward=-1;
+
+ if(keys["a"]||keys["arrowleft"])sideways=-1;
+
+ if(keys["d"]||keys["arrowright"])sideways=1;
+
+ const moving=Math.abs(forward)+Math.abs(sideways)>.08;
+
+ const speed=running?11:6;
+
+ const sin=Math.sin(cameraAngle),cos=Math.cos(cameraAngle);
+
+ if(moving){
+
+  let dx=(sideways*cos+forward*sin);
+
+  let dz=(sideways*sin-forward*cos);
+
+  const len=Math.hypot(dx,dz)||1;
+
+  dx/=len;dz/=len;
+
+  player.position.x+=dx*speed*dt;
+
+  player.position.z+=dz*speed*dt;
+
+  player.rotation.y=Math.atan2(dx,dz);
+
+  walkTime+=dt*(running?13:8);
+
+  legL.rotation.x=Math.sin(walkTime)*.65;
+
+  legR.rotation.x=-Math.sin(walkTime)*.65;
+
+  armL.rotation.x=-Math.sin(walkTime)*.5;
+
+  armR.rotation.x=Math.sin(walkTime)*.5;
+
+ }else{
+
+  legL.rotation.x*=.8;legR.rotation.x*=.8;
+
+  armL.rotation.x*=.8;armR.rotation.x*=.8;
+
+ }
+
+ // حدود المدينة
+
+ player.position.x=THREE.MathUtils.clamp(player.position.x,-105,105);
+
+ player.position.z=THREE.MathUtils.clamp(player.position.z,-105,105);
+
+ // كاميرا خلف اللاعب
+
+ const distance=10;
+
+ const targetX=player.position.x-Math.sin(cameraAngle)*distance;
+
+ const targetZ=player.position.z+Math.cos(cameraAngle)*distance;
+
+ const desired=new THREE.Vector3(targetX,6,targetZ);
+
+ camera.position.lerp(desired,1-Math.pow(.001,dt));
+
+ const look=new THREE.Vector3(player.position.x,1.7,player.position.z);
+
+ camera.lookAt(look);
+
+ // حركة علامة المهمة
+
+ marker.rotation.y+=dt*.8;
+
+ marker.position.y=.12+Math.sin(performance.now()*.002)*.2;
+
+ // إتمام المهمة
+
+ const dist=player.position.distanceTo(new THREE.Vector3(35,0,-42));
+
+ if(dist<4&&!completed){
+
+  completed=true;
+
+  cash+=500;
+
+  document.getElementById("cash").textContent=cash;
+
+  document.getElementById("mission").textContent="✅ المهمة الأولى اكتملت! حصلت على 500 دولار";
+
+  const toast=document.getElementById("toast");
+
+  toast.innerHTML="مبرووووك! 🏆<br>أنهيت المهمة الأولى<br>مكافأتك: $500";
+
+  toast.style.display="block";
+
+  setTimeout(()=>toast.style.display="none",3500);
+
+ }
+
+ renderer.render(scene,camera);
+
+}
+
+camera.position.set(0,6,10);
+
+camera.lookAt(0,1.5,0);
+
+animate();
+
+loading.style.display="none";
+
+addEventListener("resize",()=>{
+
+ camera.aspect=innerWidth/innerHeight;
+
+ camera.updateProjectionMatrix();
+
+ renderer.setSize(innerWidth,innerHeight);
+
+});
+
+})();
+
+</script>
+
+</body>
+
+</html>
